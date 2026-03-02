@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tasks</title>
+
+    <!-- Bootstrap -->
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+        rel="stylesheet"
+    >
+    <!-- Bootstrap Icons -->
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" 
+        rel="stylesheet"
+    >
+
+    <style>
+        body { background: #f2f4f7; }
+        .table thead { background: #e9ecef; }
+        .edit { display: none; }
+        .pointer { cursor: pointer; }
+    </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-light bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-white" href="index.html">
+            AI Task Manager
+        </a>
+    </div>
+</nav>
+
+<div class="container py-5">
+
+    <h1 class="mb-4">Your Tasks</h1>
+
+    <!-- DASHBOARD -->
+    <div class="row text-center mb-4">
+        <div class="col">
+            <div class="card p-3 shadow-sm">
+                <h4 id="statTotal">0</h4>
+                <p>Total Tasks</p>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card p-3 shadow-sm">
+                <h4 id="statCritical">0</h4>
+                <p>Critical</p>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card p-3 shadow-sm">
+                <h4 id="statHigh">0</h4>
+                <p>High Priority</p>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card p-3 shadow-sm">
+                <h4 id="statUpcoming">0</h4>
+                <p>Upcoming</p>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card p-3 shadow-sm">
+                <h4 id="statOverdue">0</h4>
+                <p>Overdue</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASK TABLE -->
+    <div class="table-responsive shadow-sm">
+        <table class="table table-hover bg-white" id="taskTable">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Type</th>
+                    <th>Due Date</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Edit</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// -------------------------------
+// LOAD TASKS
+// -------------------------------
+async function loadTasks() {
+    const res = await fetch("/api/tasks");
+    const tasks = await res.json();
+
+    const tbody = document.querySelector("#taskTable tbody");
+    tbody.innerHTML = "";
+
+    tasks.forEach((t, i) => {
+        tbody.innerHTML += `
+        <tr>
+            <td>
+                <span class="view">${t.name}</span>
+                <input class="form-control edit" value="${t.name}">
+            </td>
+
+            <td>
+                <span class="view">${t.type}</span>
+                <select class="form-select edit">
+                    <option ${t.type=="exam"?"selected":""}>exam</option>
+                    <option ${t.type=="quiz"?"selected":""}>quiz</option>
+                    <option ${t.type=="assignment"?"selected":""}>assignment</option>
+                    <option ${t.type=="reading"?"selected":""}>reading</option>
+                    <option ${t.type=="project"?"selected":""}>project</option>
+                    <option ${t.type=="exercise"?"selected":""}>exercise</option>
+                </select>
+            </td>
+
+            <td>
+                <span class="view">${t.due}</span>
+                <input type="date" class="form-control edit" value="${t.due}">
+            </td>
+
+            <td>
+                <span class="view">${t.priority}</span>
+                <select class="form-select edit">
+                    <option ${t.priority=="Low"?"selected":""}>Low</option>
+                    <option ${t.priority=="Medium"?"selected":""}>Medium</option>
+                    <option ${t.priority=="High"?"selected":""}>High</option>
+                    <option ${t.priority=="Critical"?"selected":""}>Critical</option>
+                </select>
+            </td>
+
+            <td>
+                <span class="view">${t.status}</span>
+                <span class="edit text-muted">Auto</span>
+            </td>
+
+            <td>
+                <i class="bi bi-pencil-square text-primary pointer view" onclick="editRow(${i})"></i>
+                <i class="bi bi-check-circle-fill text-success pointer edit" onclick="saveRow(${i})"></i>
+                <i class="bi bi-x-circle-fill text-danger pointer edit" onclick="cancelEdit(${i})"></i>
+                <i class="bi bi-trash-fill text-danger pointer ms-3" onclick="deleteRow(${i})"></i>
+            </td>
+        </tr>`;
+    });
+
+    hideAllEdit();
+    loadDashboard();
+}
+
+// -------------------------------
+// EDIT MODE
+// -------------------------------
+function hideAllEdit() {
+    document.querySelectorAll(".edit").forEach(e => e.style.display = "none");
+}
+
+function editRow(i) {
+    const row = document.querySelectorAll("#taskTable tbody tr")[i];
+    row.querySelectorAll(".view").forEach(e => e.style.display = "none");
+    row.querySelectorAll(".edit").forEach(e => e.style.display = "block");
+}
+
+function cancelEdit(i) {
+    loadTasks();
+}
+
+// -------------------------------
+// SAVE TASK
+// -------------------------------
+async function saveRow(i) {
+    const row = document.querySelectorAll("#taskTable tbody tr")[i];
+    const inputs = row.querySelectorAll(".edit");
+
+    const updated = {
+        name: inputs[0].value,
+        type: inputs[1].value,
+        due: inputs[2].value,
+        priority: inputs[3].value,
+        status: "FUTURE"
+    };
+
+    await fetch(`/api/tasks/${i}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+    });
+
+    loadTasks();
+}
+
+// -------------------------------
+// DELETE TASK
+// -------------------------------
+async function deleteRow(i) {
+    await fetch(`/api/tasks/${i}`, { method: "DELETE" });
+    loadTasks();
+}
+
+// -------------------------------
+// DASHBOARD
+// -------------------------------
+async function loadDashboard() {
+    const res = await fetch("/api/dashboard");
+    const stats = await res.json();
+
+    document.getElementById("statTotal").textContent = stats.total;
+    document.getElementById("statCritical").textContent = stats.critical;
+    document.getElementById("statHigh").textContent = stats.high;
+    document.getElementById("statUpcoming").textContent = stats.upcoming;
+    document.getElementById("statOverdue").textContent = stats.overdue;
+}
+
+loadTasks();
+</script>
+
+</body>
+</html>

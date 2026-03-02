@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Settings</title>
+
+    <!-- Bootstrap -->
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" 
+        rel="stylesheet"
+    >
+    <!-- Icons -->
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" 
+        rel="stylesheet"
+    >
+
+    <style>
+        body {
+            background: #f2f4f7;
+        }
+        .card {
+            border-radius: 12px;
+        }
+        .table thead {
+            background: #e9ecef;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-light bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-white" href="index.html">
+            <i class="bi bi-gear-fill"></i> Settings
+        </a>
+
+        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navMenu">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link text-white" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link text-white" href="tasks.html">Tasks</a></li>
+                <li class="nav-item"><a class="nav-link active text-white fw-bold" href="settings.html">Settings</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- SETTINGS -->
+<div class="container py-5">
+
+    <h1 class="mb-4"><i class="bi bi-sliders"></i> Task Settings</h1>
+
+    <div class="card p-4 shadow-sm bg-white">
+
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Task Type</th>
+                    <th>Priority</th>
+                    <th>Alert Window (days)</th>
+                </tr>
+            </thead>
+
+            <tbody id="settingsBody"></tbody>
+        </table>
+
+        <div class="text-end">
+            <button class="btn btn-primary btn-lg" onclick="saveSettings()">
+                <i class="bi bi-check-circle"></i> Save
+            </button>
+        </div>
+
+        <div id="alertBox" class="alert alert-success mt-4 d-none">
+            Settings saved successfully!
+        </div>
+
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+const defaultSettings = {
+    exam: { priority: "High", alert: 7 },
+    assignment: { priority: "Medium", alert: 5 },
+    quiz: { priority: "High", alert: 3 }
+};
+
+// -------------------------------
+// LOAD SETTINGS
+// -------------------------------
+async function loadSettings() {
+    const res = await fetch("/api/settings");
+    let settings = await res.json();
+
+    // If empty, use defaults
+    if (Object.keys(settings).length === 0) {
+        settings = defaultSettings;
+    }
+
+    const tbody = document.getElementById("settingsBody");
+    tbody.innerHTML = "";
+
+    Object.keys(settings).forEach(type => {
+        const s = settings[type];
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${type}</td>
+
+            <td>
+                <select class="form-select" id="p_${type}">
+                    <option ${s.priority=="Low"?"selected":""}>Low</option>
+                    <option ${s.priority=="Medium"?"selected":""}>Medium</option>
+                    <option ${s.priority=="High"?"selected":""}>High</option>
+                    <option ${s.priority=="Critical"?"selected":""}>Critical</option>
+                </select>
+            </td>
+
+            <td>
+                <input type="number" class="form-control" id="a_${type}" value="${s.alert}">
+            </td>
+        </tr>`;
+    });
+}
+
+// -------------------------------
+// SAVE SETTINGS
+// -------------------------------
+async function saveSettings() {
+    const settings = {};
+
+    Object.keys(defaultSettings).forEach(type => {
+        settings[type] = {
+            priority: document.getElementById("p_" + type).value,
+            alert: parseInt(document.getElementById("a_" + type).value)
+        };
+    });
+
+    await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings)
+    });
+
+    const alertBox = document.getElementById("alertBox");
+    alertBox.classList.remove("d-none");
+    setTimeout(() => alertBox.classList.add("d-none"), 2000);
+}
+
+loadSettings();
+</script>
+
+</body>
+</html>

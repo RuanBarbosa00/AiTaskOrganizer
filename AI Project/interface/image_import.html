@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Import - AI Task Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="top-nav">
+        <a href="/">Home</a>
+        <a href="/tasks">Tasks</a>
+        <a href="/settings">Settings</a>
+        <a href="/image_import" class="active">Image Import</a>
+    </div>
+
+    <div class="pdf-container">
+
+        <div class="pdf-header">
+            <div class="pdf-title">Import tasks from an image</div>
+        </div>
+
+        <div class="pdf-upload-area">
+            <label for="imgInput" class="pdf-upload-label">Choose Image</label>
+            <input type="file" id="imgInput" accept="image/*">
+            <div class="pdf-filename" id="imgFilename">No file selected</div>
+
+            <div class="pdf-actions">
+                <button class="btn-secondary" onclick="clearPreview()">Clear</button>
+                <button class="btn-primary" id="analyzeBtn" onclick="uploadImage()" disabled>
+                    Analyze Image
+                </button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p>Analyzing image…</p>
+        </div>
+
+        <div id="previewSection" style="display:none;">
+            <h3>Preview extracted tasks</h3>
+
+            <div class="preview-controls">
+                <button class="btn-secondary" onclick="toggleSelectAll()">Select All</button>
+                <button class="btn-secondary" onclick="toggleSelectAll(false)">Unselect All</button>
+            </div>
+
+            <table id="previewTable">
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>Task</th>
+                        <th>Type</th>
+                        <th>Due Date</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <div class="preview-actions">
+                <button class="btn-secondary" onclick="clearPreview()">Cancel</button>
+                <button class="btn-primary" onclick="confirmImageTasks()">Confirm & Save</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+let previewTasks = [];
+
+const imgInput = document.getElementById("imgInput");
+const imgFilename = document.getElementById("imgFilename");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const previewSection = document.getElementById("previewSection");
+const previewTableBody = document.querySelector("#previewTable tbody");
+const loading = document.getElementById("loading");
+
+imgInput.addEventListener("change", () => {
+    if (imgInput.files.length > 0) {
+        imgFilename.textContent = imgInput.files[0].name;
+        analyzeBtn.disabled = false;
+    } else {
+        imgFilename.textContent = "No file selected";
+        analyzeBtn.disabled = true;
+    }
+});
+
+function statusBadgeClass(status) {
+    return "status-badge status-" + status.toLowerCase().replace(" ", "-");
+}
+
+function priorityBadgeClass(priority) {
+    return "priority-badge priority-" + priority.toLowerCase();
+}
+
+async function uploadImage() {
+    if (imgInput.files.length === 0) return;
+
+    analyzeBtn.disabled = true;
+    loading.style.display = "block";
+
+    const file = imgInput.files[0];
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+        const res = await fetch("/api/upload_image_preview", {
+            method: "POST",
+            body: form
+        });
+
+        const tasks = await res.json();
+        previewTasks = tasks;
+        renderPreviewTable();
+        previewSection.style.display = "block";
+
+    } catch (err) {
+        alert("Error analyzing image.");
+    } finally {
+        loading.style.display = "none";
+        analyzeBtn.disabled = false;
+    }
+}
+
+function renderPreviewTable() {
+    previewTableBody.innerHTML = "";
+
+    previewTasks.forEach((t, idx) => {
+        const tr = document.createElement("tr");
+
+        const tdCheck = document.createElement("td");
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.checked = true;
+        check.dataset.index = idx;
+        tdCheck.appendChild(check);
+
+        const tdName = document.createElement("td");
+        const inputName = document.createElement("input");
+        inputName.value = t.name;
+        inputName.oninput = () => t.name = inputName.value;
+        tdName.appendChild(inputName);
+
+        const tdType = document.createElement("td");
+        const inputType = document.createElement("input");
+        inputType.value = t.type;
+        inputType.oninput = () => t.type = inputType.value;
+        tdType.appendChild(inputType);
+
+        const tdDue = document.createElement("td");
+        const inputDue = document.createElement("input");
+        inputDue.type = "date";
+        inputDue.value = t.due;
+        inputDue.oninput = () => t.due = inputDue.value;
+        tdDue.appendChild(inputDue);
+
+        const tdPriority = document.createElement("td");
+        tdPriority.innerHTML = `<span class="${priorityBadgeClass(t.priority)}">${t.priority}</span>`;
+
+        const tdStatus = document.createElement("td");
+        tdStatus.innerHTML = `<span class="${statusBadgeClass(t.status)}">${t.status}</span>`;
+
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdName);
+        tr.appendChild(tdType);
+        tr.appendChild(tdDue);
+        tr.appendChild(tdPriority);
+        tr.appendChild(tdStatus);
+
+        previewTableBody.appendChild(tr);
+    });
+}
+
+function toggleSelectAll(select = true) {
+    document.querySelectorAll("#previewTable tbody input[type='checkbox']")
+        .forEach(cb => cb.checked = select);
+}
+
+async function confirmImageTasks() {
+    const selected = [];
+
+    document.querySelectorAll("#previewTable tbody input[type='checkbox']").forEach(cb => {
+        if (cb.checked) selected.push(previewTasks[cb.dataset.index]);
+    });
+
+    if (selected.length === 0) {
+        alert("No tasks selected.");
+        return;
+    }
+
+    const res = await fetch("/api/confirm_image_tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(selected)
+    });
+
+    const data = await res.json();
+    alert("Tasks added: " + data.added);
+    clearPreview();
+}
+
+function clearPreview() {
+    previewTasks = [];
+    previewTableBody.innerHTML = "";
+    previewSection.style.display = "none";
+    imgInput.value = "";
+    imgFilename.textContent = "No file selected";
+    analyzeBtn.disabled = true;
+}
+</script>
+
+</body>
+</html>

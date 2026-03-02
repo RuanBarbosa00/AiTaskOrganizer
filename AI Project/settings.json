@@ -1,0 +1,14 @@
+{
+    "exam": {
+        "priority": "High",
+        "alert": 7
+    },
+    "assignment": {
+        "priority": "Medium",
+        "alert": 4
+    },
+    "quiz": {
+        "priority": "Medium",
+        "alert": 2
+    }
+}

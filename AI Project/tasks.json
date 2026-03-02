@@ -1,0 +1,37 @@
+[
+    {
+        "name": "math exam 02/20",
+        "type": "exam",
+        "due": "2026-02-20",
+        "priority": "Critical",
+        "status": "COMING UP"
+    },
+    {
+        "name": "math quiz 03/01",
+        "type": "quiz",
+        "due": "2026-03-01",
+        "priority": "High",
+        "status": "FUTURE"
+    },
+    {
+        "name": "history assignment 03/20",
+        "type": "reading",
+        "due": "2026-03-20",
+        "priority": "Low",
+        "status": "FUTURE"
+    },
+    {
+        "name": "IA assignment 02/17",
+        "type": "reading",
+        "due": "2026-02-17",
+        "priority": "Critical",
+        "status": "OVERDUE"
+    },
+    {
+        "name": "AI project exam",
+        "type": "exam",
+        "due": "",
+        "priority": "High",
+        "status": "NO DATE"
+    }
+]
